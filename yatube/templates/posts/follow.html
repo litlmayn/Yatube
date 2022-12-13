@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block title %} 
+  Новости из подписок 
+{% endblock title %}
+{% block header %}
+Новости из подписок:
+{% endblock %}
+{% block content %}
+{% include 'posts/includes/switcher.html' %}
+  <div class="container py-5"> 
+    <h1>Новое из подписок:</h1>
+    {% for post in page_obj %}
+      {% include 'posts/includes/post_card.html' %}
+      {% if not forloop.last %}<hr>{% endif %}
+    {% endfor %}
+    {% include 'posts/includes/paginator.html' %}
+  </div> 
+{% endblock %}
