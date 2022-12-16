@@ -3,6 +3,7 @@ from django.conf import settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.core.cache import cache
 
 from posts.forms import PostForm
 from posts.models import Post, Group, Follow, User
@@ -52,6 +53,9 @@ class TaskPagesTests(TestCase):
 
     def test_paginator(self):
         """Paginator работает коректно."""
+        self.authorized_client_follower.get(reverse(
+            'posts:profile_follow', args=(self.user,)
+        ))
         Post.objects.all().delete()
         objs = (
             Post(
@@ -70,12 +74,15 @@ class TaskPagesTests(TestCase):
             reverse('posts:index'),
             reverse('posts:group_list', args=(self.group.slug,)),
             reverse('posts:profile', args=(self.user.username,)),
+            reverse('posts:follow_index'),
         )
         for name_page in page_for_test_paginator:
             with self.subTest(name_page=name_page):
                 for number_page, number_post in number_of_posts_page:
                     with self.subTest(number_page=number_page):
-                        response = self.client.get(name_page + number_page)
+                        response = self.authorized_client_follower.get(
+                            name_page + number_page
+                        )
                         self.assertEqual(
                             len(response.context['page_obj']), number_post
                         )
@@ -93,6 +100,7 @@ class TaskPagesTests(TestCase):
 
     def test_index_show_correct_context(self):
         """Список постов в шаблоне index равен ожидаемому контексту."""
+        cache.clear()
         response = self.client.get(reverse(
             'posts:index', args=(None)
         ))
@@ -132,6 +140,7 @@ class TaskPagesTests(TestCase):
         form_fields = {
             'text': forms.fields.CharField,
             'group': forms.models.ModelChoiceField,
+            'image': forms.fields.ImageField,
         }
         for adress, argument in name_template:
             with self.subTest(adress=adress):
@@ -159,24 +168,33 @@ class TaskPagesTests(TestCase):
         self.assertEqual(len(response_old_group.context['page_obj']), not 0)
 
     def test_index_cache_context(self):
-        """Удаленный пост остается в context до обновления кэша."""
-        response = self.client.get(
+        """Удаленный пост остается в content до обновления кэша."""
+        response_1 = self.client.get(
             reverse('posts:index')
         )
-        delete_context = response.context
         Post.objects.all().delete()
-        self.assertEqual(response.context, delete_context)
+        response_2 = self.client.get(
+            reverse('posts:index')
+        )
+        cache.clear()
+        response_3 = self.client.get(
+            reverse('posts:index')
+        )
+        self.assertEqual(response_1.content, response_2.content)
+        self.assertNotEqual(response_1.content, response_3.content)
 
     def test_follow_user(self):
         """Проверка отписки и подписки на автора."""
         follow_count_do = Follow.objects.count()
-        self.authorized_client_follower.get(reverse(
-            'posts:profile_follow', args=(self.user,)
-        ))
+        Follow.objects.create(author=self.user, user=self.user_follower)
         follow_count_after = Follow.objects.count()
         self.authorized_client_follower.get(reverse(
             'posts:profile_unfollow', args=(self.user,)
         ))
+        author = Follow.objects.all().author
+        user = Follow.objects.all().user
+        self.assertEqual(author, self.user)
+        self.assertEqual(user, self.user_follower)
         self.assertEqual(follow_count_after, (follow_count_do + 1))
         self.assertEqual(Follow.objects.count(), (follow_count_after - 1))
 
@@ -184,9 +202,7 @@ class TaskPagesTests(TestCase):
         """
         Новая запись пользователя появляется в ленте тех, кто на него подписан.
         """
-        self.authorized_client_follower.get(reverse(
-            'posts:profile_follow', args=(self.user,)
-        ))
+        Follow.objects.create(author=self.user, user=self.user_follower)
         response = self.authorized_client_follower.get(reverse(
             'posts:follow_index'
         ))
@@ -201,3 +217,17 @@ class TaskPagesTests(TestCase):
             'posts:follow_index'
         ))
         self.assertNotIn(self.post, response.context['page_obj'])
+
+    def test_two_follow(self):
+        """Нельзя подписаться два раза на одного автора."""
+        # тест падает, не пойму почему
+        Follow.objects.create(author=self.user, user=self.user_follower)
+        follow_count = Follow.objects.count()
+        Follow.objects.create(author=self.user, user=self.user_follower)
+        self.assertEqual(Follow.objects.count(), follow_count)
+
+    def test_follow_for_my(self):
+        """Нельзя подписаться на самого себя."""
+        # тест падает, не пойму почему
+        Follow.objects.create(author=self.user, user=self.user)
+        self.assertEqual(Follow.objects.count(), 0)

@@ -7,18 +7,16 @@ from .forms import PostForm, CommentForm
 from .models import Group, Post, Follow, User
 
 
-@cache_page(timeout=20, key_prefix='index_page')
 def profile(request, username):
     author = get_object_or_404(User, username=username)
     post = author.posts.select_related('group').all()
     page_obj = get_paginator(request, post)
     following = False
-    if request.user.is_authenticated:
-        if request.user.follower.filter(author=author):
-            following = True
+    followers = request.user
+    if followers.is_authenticated and followers.follower.filter(author=author):
+        following = True
     context = {
         'following': following,
-        'post': post,
         'author': author,
         'page_obj': page_obj,
     }
@@ -27,18 +25,16 @@ def profile(request, username):
 
 def post_detail(request, post_id):
     post = get_object_or_404(Post, pk=post_id)
-    author = post.author
     form = CommentForm(request.POST or None)
-    comment = post.comments.all()
     context = {
-        'author': author,
         'form': form,
-        'comment': comment,
+        'comment': post.comments.all(),
         'post': post,
     }
     return render(request, 'posts/post_detail.html', context)
 
 
+@cache_page(timeout=20, key_prefix='index_page')
 def index(request):
     posts = Post.objects.select_related('group', 'author').all()
     page_obj = get_paginator(request, posts)
@@ -96,6 +92,7 @@ def post_edit(request, post_id):
 
 @login_required
 def add_comment(request, post_id):
+    # Если делаю выборку по автору вылетает 404
     post = get_object_or_404(Post, id=post_id)
     form = CommentForm(request.POST or None)
     if form.is_valid:
@@ -108,8 +105,7 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    follower = request.user
-    posts_list = Post.objects.filter(author__following__user=follower)
+    posts_list = Post.objects.select_related('author')
     page_obj = get_paginator(request, posts_list)
     context = {
         'page_obj': page_obj,
@@ -128,8 +124,9 @@ def profile_follow(request, username):
 
 @login_required
 def profile_unfollow(request, username):
-    author = get_object_or_404(User, username=username)
-    follow = request.user.follower.filter(author=author)
+    # сделал как ты сказал, в итоге 500 ошибку выдает
+    follow = get_object_or_404(Follow, author__username=username)
+    print(follow)
     if follow.exists():
         follow.delete()
     return redirect('posts:follow_index')

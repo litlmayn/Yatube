@@ -40,6 +40,9 @@ class Follow(models.Model):
     class Meta:
         verbose_name_plural = 'Класс подписки на авторов'
 
+    def __str__(self):
+        return self.author, self.user
+
 
 class Post(models.Model):
     text = models.TextField(

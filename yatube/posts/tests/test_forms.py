@@ -1,10 +1,10 @@
+from http import HTTPStatus
+
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 
 from posts.models import Post, Group, Comment, User
-
-from http import HTTPStatus
 
 
 class TaskFormsTests(TestCase):
@@ -134,6 +134,8 @@ class TaskFormsTests(TestCase):
             data=form_data,
             follow=True,
         )
+        comment = Comment.objects.first()
         self.assertEqual(Comment.objects.count(), (comment_count + 1))
-        self.assertEqual(Comment.objects.get().text, form_data['text'])
+        self.assertEqual(comment.text, form_data['text'])
         self.assertEqual(Post.objects.get().author, self.user)
+        self.assertEqual(Post.objects.get(), self.post)
