@@ -105,7 +105,9 @@ def add_comment(request, post_id):
 
 @login_required
 def follow_index(request):
-    posts_list = Post.objects.select_related('author')
+    follower = request.user
+    # select_related('author') - выдает все записи
+    posts_list = Post.objects.filter(author__following__user=follower)
     page_obj = get_paginator(request, posts_list)
     context = {
         'page_obj': page_obj,
@@ -124,9 +126,11 @@ def profile_follow(request, username):
 
 @login_required
 def profile_unfollow(request, username):
-    # сделал как ты сказал, в итоге 500 ошибку выдает
-    follow = get_object_or_404(Follow, author__username=username)
-    print(follow)
+    # сделал как ты сказал
+    # 'get_object_or_404(Follow, author__username=username)',
+    # в итоге 500 ошибку выдает
+    author = get_object_or_404(User, username=username)
+    follow = request.user.follower.filter(author=author)
     if follow.exists():
         follow.delete()
     return redirect('posts:follow_index')
