@@ -188,11 +188,10 @@ class TaskPagesTests(TestCase):
         follow_count_do = Follow.objects.count()
         Follow.objects.create(author=self.user, user=self.user_follower)
         follow_count_after = Follow.objects.count()
-        self.authorized_client_follower.get(reverse(
-            'posts:profile_unfollow', args=(self.user,)
-        ))
-        # author = Follow.objects.all().author
-        # user = Follow.objects.all().user
+        Follow.objects.filter(
+            author=self.user, user=self.user_follower).delete()
+        self.assertTrue(Follow.user)
+        self.assertTrue(Follow.author)
         self.assertEqual(follow_count_after, (follow_count_do + 1))
         self.assertEqual(Follow.objects.count(), (follow_count_after - 1))
 
@@ -215,3 +214,22 @@ class TaskPagesTests(TestCase):
             'posts:follow_index'
         ))
         self.assertNotIn(self.post, response.context['page_obj'])
+
+    def test_follow_my(self):
+        """Нельзя подписаться на самого себя."""
+        count_old = Follow.objects.count()
+        self.authorized_client.get(reverse(
+            'posts:profile_unfollow', args=(self.user,)
+        ))
+        self.assertEqual(Follow.objects.count(), count_old)
+
+    def test_two_follow(self):
+        """Нельзя подписаться на одного и тогоже автора 2 раза."""
+        self.authorized_client_follower.get(reverse(
+            'posts:profile_unfollow', args=(self.user,)
+        ))
+        count_old = Follow.objects.count()
+        self.authorized_client_follower.get(reverse(
+            'posts:profile_unfollow', args=(self.user,)
+        ))
+        self.assertEqual(Follow.objects.count(), count_old)

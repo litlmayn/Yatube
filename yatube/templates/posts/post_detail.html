@@ -37,7 +37,7 @@
           <p>
             {{ post.text|linebreaksbr }} 
           </p>
-            {% if author == request.user %}
+            {% if post.author == request.user %}
               <a class="btn btn-primary" href="{% url 'posts:post_edit' post.id %}">
                 редактировать запись
               </a>

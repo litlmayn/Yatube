@@ -75,6 +75,13 @@ class TaskURLTests(TestCase):
             ('posts:post_edit', (self.post.id,),
              f'/posts/{self.post.id}/edit/'),
             ('posts:post_create', None, '/create/'),
+            ('posts:add_comment', (self.post.id,),
+             f'/posts/{self.post.id}/comment/'),
+            ('posts:follow_index', None, '/follow/'),
+            ('posts:profile_follow', (self.user.username,),
+             f'/profile/{self.user.username}/follow/'),
+            ('posts:profile_unfollow', (self.user.username,),
+             f'/profile/{self.user.username}/unfollow/'),
         )
         for address, argument, url in templates_url_name:
             with self.subTest(address=address):
@@ -114,34 +121,22 @@ class TaskURLTests(TestCase):
         """Проверка urls авторизированным клиентом."""
         for name, argument in self.urls_test_pakeg:
             with self.subTest(name=name):
-                if name == 'posts:post_edit':
+                if name == 'posts:post_edit' or name == 'posts:add_comment':
                     response = self.authorized_client2.post(reverse(
                         name, args=(argument)), follow=True)
                     self.assertRedirects(
                         response,
                         (reverse('posts:post_detail', args=(self.post.id,), ))
                     )
-                elif name == 'posts:add_comment':
+                elif name in ('posts:profile_follow',
+                              'posts:profile_unfollow'):
                     response = self.authorized_client2.post(reverse(
                         name, args=(argument)), follow=True)
                     self.assertRedirects(
                         response,
-                        (reverse('posts:post_detail', args=(self.post.id,), ))
+                        (reverse('posts:profile', args=(self.user,),))
                     )
-                elif name == 'posts:profile_follow':
-                    response = self.authorized_client2.post(reverse(
-                        name, args=(argument)), follow=True)
-                    self.assertRedirects(
-                        response,
-                        (reverse('posts:follow_index'))
-                    )
-                elif name == 'posts:profile_unfollow':
-                    response = self.authorized_client2.post(reverse(
-                        name, args=(argument)), follow=True)
-                    self.assertRedirects(
-                        response,
-                        (reverse('posts:follow_index'))
-                    )
+
                 else:
                     response = self.authorized_client2.post(
                         reverse(name, args=(argument)), )
@@ -163,14 +158,13 @@ class TaskURLTests(TestCase):
                         name, args=(argument)), follow=True)
                     self.assertRedirects(
                         response,
-                        (reverse('posts:follow_index'))
+                        (reverse('posts:profile', args=(self.user,)))
                     )
                 elif name == 'posts:profile_unfollow':
-                    response = self.authorized_client2.post(reverse(
+                    response = self.authorized_client.post(reverse(
                         name, args=(argument)), follow=True)
-                    self.assertRedirects(
-                        response,
-                        (reverse('posts:follow_index'))
+                    self.assertEqual(
+                        response.status_code, HTTPStatus.NOT_FOUND
                     )
                 else:
                     response = response = self.authorized_client.post(

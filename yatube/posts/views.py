@@ -1,6 +1,5 @@
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
-from django.views.decorators.cache import cache_page
 
 from .utils import get_paginator
 from .forms import PostForm, CommentForm
@@ -11,10 +10,8 @@ def profile(request, username):
     author = get_object_or_404(User, username=username)
     post = author.posts.select_related('group').all()
     page_obj = get_paginator(request, post)
-    following = False
-    followers = request.user
-    if followers.is_authenticated and followers.follower.filter(author=author):
-        following = True
+    following = (request.user.is_authenticated) and (
+        request.user.follower.filter(author=author))
     context = {
         'following': following,
         'author': author,
@@ -24,6 +21,8 @@ def profile(request, username):
 
 
 def post_detail(request, post_id):
+    # post = Post.objects.filter(author).prefetch_related('comments__author')
+    # 500 почему-то
     post = get_object_or_404(Post, pk=post_id)
     form = CommentForm(request.POST or None)
     context = {
@@ -34,7 +33,6 @@ def post_detail(request, post_id):
     return render(request, 'posts/post_detail.html', context)
 
 
-@cache_page(timeout=20, key_prefix='index_page')
 def index(request):
     posts = Post.objects.select_related('group', 'author').all()
     page_obj = get_paginator(request, posts)
@@ -92,7 +90,6 @@ def post_edit(request, post_id):
 
 @login_required
 def add_comment(request, post_id):
-    # Если делаю выборку по автору вылетает 404
     post = get_object_or_404(Post, id=post_id)
     form = CommentForm(request.POST or None)
     if form.is_valid:
@@ -106,8 +103,8 @@ def add_comment(request, post_id):
 @login_required
 def follow_index(request):
     follower = request.user
-    # select_related('author') - выдает все записи
-    posts_list = Post.objects.filter(author__following__user=follower)
+    posts_list = Post.objects.filter(
+        author__following__user=follower).select_related('author')
     page_obj = get_paginator(request, posts_list)
     context = {
         'page_obj': page_obj,
@@ -121,16 +118,12 @@ def profile_follow(request, username):
     author = get_object_or_404(User, username=username)
     if follower != author:
         Follow.objects.get_or_create(user=request.user, author=author)
-    return redirect('posts:follow_index')
+    return redirect('posts:profile', author)
 
 
 @login_required
 def profile_unfollow(request, username):
-    # сделал как ты сказал
-    # 'get_object_or_404(Follow, author__username=username)',
-    # в итоге 500 ошибку выдает
     author = get_object_or_404(User, username=username)
-    follow = request.user.follower.filter(author=author)
-    if follow.exists():
-        follow.delete()
-    return redirect('posts:follow_index')
+    get_object_or_404(
+        Follow, user=request.user, author__username=username).delete()
+    return redirect('posts:profile', author)

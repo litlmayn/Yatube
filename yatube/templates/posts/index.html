@@ -2,17 +2,17 @@
 {% block title %} 
   Последнее обновление на сайте 
 {% endblock title %}
-{% block header %}
-Последние обновления на сайте
-{% endblock %}
 {% block content %}
+{% load cache %}
+{% cache 20 sidebar %}
   <div class="container py-5"> 
-    {% include 'posts/includes/switcher.html' %}
+    {% include 'posts/includes/switcher.html' with index=True %}
     <h1>Последние обновления на сайте</h1>
     {% for post in page_obj %}
-      {% include 'posts/includes/post_card.html' with index=True %}
+      {% include 'posts/includes/post_card.html' %}
       {% if not forloop.last %}<hr>{% endif %}
     {% endfor %}
     {% include 'posts/includes/paginator.html' %}
   </div> 
+{% endcache %}
 {% endblock %}

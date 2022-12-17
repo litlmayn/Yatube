@@ -2,9 +2,6 @@
 {% block title %} 
   Новости из подписок 
 {% endblock title %}
-{% block header %}
-Новости из подписок:
-{% endblock %}
 {% block content %}
   <div class="container py-5"> 
     {% include 'posts/includes/switcher.html' with follow=True %}

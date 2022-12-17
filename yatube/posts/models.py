@@ -38,10 +38,18 @@ class Follow(models.Model):
     )
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'author'], name="UniqueFollow",
+            ),
+            models.CheckConstraint(
+                check=~models.Q(user=models.F('author')), name='check_follow',
+            ),
+        ]
         verbose_name_plural = 'Класс подписки на авторов'
 
     def __str__(self):
-        return self.author, self.user
+        return f'{self.author}, {self.user}'
 
 
 class Post(models.Model):
