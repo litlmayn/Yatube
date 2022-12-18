@@ -4,7 +4,7 @@
 {% endblock title %}
 {% block content %}
 {% load cache %}
-{% cache 20 sidebar %}
+{% cache 30 sidebar index page_obj.number %}
   <div class="container py-5"> 
     {% include 'posts/includes/switcher.html' with index=True %}
     <h1>Последние обновления на сайте</h1>

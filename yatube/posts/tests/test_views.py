@@ -185,15 +185,21 @@ class TaskPagesTests(TestCase):
 
     def test_follow_user(self):
         """Проверка отписки и подписки на автора."""
-        follow_count_do = Follow.objects.count()
+        follow_count = Follow.objects.count()
+        self.authorized_client_follower.get(reverse(
+            'posts:profile_follow', args=(self.user,)
+        ))
+        follows = Follow.objects.get()
+        self.assertEqual(self.user_follower, follows.user)
+        self.assertEqual(self.user, follows.author)
+        self.assertEqual(Follow.objects.count(), (follow_count + 1))
+
+    def test_unfollow_user(self):
         Follow.objects.create(author=self.user, user=self.user_follower)
-        follow_count_after = Follow.objects.count()
+        follow_count = Follow.objects.count()
         Follow.objects.filter(
             author=self.user, user=self.user_follower).delete()
-        self.assertTrue(Follow.user)
-        self.assertTrue(Follow.author)
-        self.assertEqual(follow_count_after, (follow_count_do + 1))
-        self.assertEqual(Follow.objects.count(), (follow_count_after - 1))
+        self.assertEqual(Follow.objects.count(), follow_count - 1)
 
     def test_follower_correct_added(self):
         """
@@ -219,17 +225,17 @@ class TaskPagesTests(TestCase):
         """Нельзя подписаться на самого себя."""
         count_old = Follow.objects.count()
         self.authorized_client.get(reverse(
-            'posts:profile_unfollow', args=(self.user,)
+            'posts:profile_follow', args=(self.user,)
         ))
         self.assertEqual(Follow.objects.count(), count_old)
 
     def test_two_follow(self):
         """Нельзя подписаться на одного и тогоже автора 2 раза."""
         self.authorized_client_follower.get(reverse(
-            'posts:profile_unfollow', args=(self.user,)
+            'posts:profile_follow', args=(self.user,)
         ))
         count_old = Follow.objects.count()
         self.authorized_client_follower.get(reverse(
-            'posts:profile_unfollow', args=(self.user,)
+            'posts:profile_follow', args=(self.user,)
         ))
         self.assertEqual(Follow.objects.count(), count_old)
