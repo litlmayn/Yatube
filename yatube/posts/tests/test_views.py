@@ -184,9 +184,9 @@ class TaskPagesTests(TestCase):
         self.assertNotEqual(response_1.content, response_3.content)
 
     def test_follow_user(self):
-        """Проверка отписки и подписки на автора."""
+        """Проверка подписки на автора."""
         follow_count = Follow.objects.count()
-        self.authorized_client_follower.get(reverse(
+        self.authorized_client_follower.post(reverse(
             'posts:profile_follow', args=(self.user,)
         ))
         follows = Follow.objects.get()
@@ -195,10 +195,12 @@ class TaskPagesTests(TestCase):
         self.assertEqual(Follow.objects.count(), (follow_count + 1))
 
     def test_unfollow_user(self):
+        """Проверка отписки на автора."""
         Follow.objects.create(author=self.user, user=self.user_follower)
         follow_count = Follow.objects.count()
-        Follow.objects.filter(
-            author=self.user, user=self.user_follower).delete()
+        self.authorized_client_follower.post(reverse(
+            'posts:profile_unfollow', args=(self.user,)
+        ))
         self.assertEqual(Follow.objects.count(), follow_count - 1)
 
     def test_follower_correct_added(self):
@@ -235,7 +237,9 @@ class TaskPagesTests(TestCase):
             'posts:profile_follow', args=(self.user,)
         ))
         count_old = Follow.objects.count()
+        self.assertEqual(count_old, 1)
         self.authorized_client_follower.get(reverse(
             'posts:profile_follow', args=(self.user,)
         ))
-        self.assertEqual(Follow.objects.count(), count_old)
+        count_after = Follow.objects.count()
+        self.assertEqual(count_after, 1)
